@@ -1,0 +1,275 @@
+---
+title: "PEC0: Primeros Pasos con R/ B0.473 - Análisis estadístico y Programación con R aula 1"
+author: "Enrique Rocho Simon"
+date: "12 de Abril 2022"
+output:
+  #pdf_document:
+    #toc: yes
+    #toc_depth: '2'
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+---
+
+
+******
+# Objetivos del aprendizaje
+******
+
+El objetivo de esta actividad es introducir al estudiante en el manejo básico de R para el tratamiento de datos. 
+
+En esta PEC utilizaremos el conjunto de datos 'Garments worker productivity' que contiene información sobre importantes aspectos del proceso de fabricación de prendas de vestir y la productividad de los empleados. 
+
+Se pueden consultar en 
+https://www.kaggle.com/ishadss/productivity-prediction-of-garment-employees
+
+Las variables del dataset son las siguientes:  
+
+- date : La fecha en formato MM-DD-YYYY.
+- quarter : Semana.
+- department : Departamento asociado a la instancia.
+- day : Día de la semana.
+- team : Número de equipo asociado a la instancia.
+- targeted_productivity : Objetivo de productividad fijado por la Dirección para cada equipo y para cada día.
+- smv : Standard Minute Value, es una medida que se emplea para definir el tiempo asignado a una tarea.
+- wip : Número de artículos en curso. Incluye el número de artículos sin terminar.
+- over_time : Representa la cantidad de tiempo extra de cada equipo en minutos.
+- incentive : Representa el importe del incentivo financiero que se les da a los trabajadores (en euros).
+- idle_time : La cantidad de tiempo en que la producción se interrumpió debido a diferentes razones .
+- idle_men : El número de trabajadores que estuvieron inactivos debido a la interrupción de la producción.
+- no_of_style_change : Número de cambios en el modelo de un determinado producto.
+- no_of_workers : Número de trabajadores en cada equipo.
+- actual_productivity : Es la productividad real que han aportado los trabajadores. Va de 0 a 1.
+
+
+
+******
+# Preparar el juego de datos (2 puntos)
+******
+
+<ul>
+<li>Lee el fichero de datos y guarda los datos en un dataset con identificador gwp.
+<li>Describe brevemente la base de datos y los campos que contiene.
+<li>Un aspecto importante del tratamiento de la información es detectar los datos faltantes, para posteriormente tomar alguna decisión sobre qué hacer con ellos. Identifica qué variables tienen valores ausentes, y cuántos.
+</ul>
+```{r,eval=TRUE,echo=TRUE}
+#Cargamos el package:
+
+library(readr)
+
+#Asignamos el file a gwp
+
+gwp<-read.csv('E:/Análisis de datos/R/PEC0/garments_worker_productivity.csv')
+
+#Comprobamos que se haya cargado revisando las primeras filas:
+
+head(gwp)
+
+
+
+```
+
+Respecto a la base de datos, esta tiene 15 columnas que describen información sobre el proceso de fabricación y la productividad de los empleados. Las columnas tienen las siguientes características:  <ul>
+<li>**date**:tipo date, M/D/Y, no hay valores ausentes.    
+<li> **quarter**: tipo String, no hay valores ausentes.  
+<li> **department**: tipo string, no hay valores ausentes.   
+<li> **day	team**: tipo numeric integer, no hay valores ausentes. Los valores van del 1 al 12.     
+<li> **targeted_productivity**: tipo numeric decimal, no hay valores ausentes. Los valores Van de 0 a 1.  
+<li> **smv**: tipo numeric decimal,no hay valores ausentes. 
+<li> **wip**: numeric integer, **sí hay valores vacíos**. **Hay 508 valores ausentes**. Podríamos sustituirlos por 0. <li> **over_time**: numeric integer, no hay valores ausentes.  
+<li> **incentive**: numeric integer, hay O pero no hay valores ausentes.  
+<li> **idle_time**: numeric integer, no hay valores ausentes. 
+<li> **incentive**: numeric decimal, hay O pero no hay valores ausentes. 
+<li> **idle_men**: numeric integer, no hay valores ausentes. 
+<li> **no_of_style_change**: numeric integer, hay O pero no hay valores ausentes. Los valores van de 0 a 2.  
+<li> **no_of_workers**: numeric integer, no hay valores ausentes. El num de trabajadores aparece fraccionado en algunos valores, esta variable deberia ser discreta y no continua.  
+<li> **actual_productivity**: numeric decimal, no hay valores ausentes. Hay valores muy altos ¿posible problema de decimales?  
+
+</ul>
+
+
+******
+# Transformar variables (4 puntos)
+******
+
+Ahora vamos a realizar algunas transformaciones en los datos
+<ul>
+
+<li>Cambia el nombre de las variables por su traducción en castellano (es preferible evitar usar tildes y otros caracteres especiales). 
+
+<li>Cambia el nombre de los valores de la variable DEPARTMENT por sus equivalentes en castellano. P.ej, sweing=coser, finishing=rematar. Ten en cuenta (y corrige) que hay un error en el fichero, pues hay casos en los que el valor finishing tiene un espacio extra al final, y por tanto en primera instancia se consideran valores distintos.
+
+<li>Cambia el formato de la variable DEPARTMENT de texto a numérico. P.ej, coser=0 y rematar=1.
+
+<li>Cambia el formato de la variable over_time para que la unidad sea horas en lugar de minutos.
+
+<li>Comprueba que todas las transformaciones se hayan realizado correctamente.
+
+</ul>
+
+******
+
+Cambiar el nombre de las variables por su traducción:
+
+```{r,eval=TRUE,echo=TRUE}
+#Cargamos la librería
+
+library(dplyr)
+
+#Usamos rename para renombrar cada una de las variables por su nombre en español.
+
+gwp <- gwp %>%
+  rename("Fecha" = "date",
+         "Semana" = "quarter",
+         "Departamento" = "department",
+         "Dia" = "day",
+         "Equipo" = "team",
+         "Productividad_Objetivo" = "targeted_productivity",
+         "Valor_Standard_por_Min" = "smv",
+         "Num_Articulos_en_Curso" = "wip",
+         "Tiempo_Extra" = "over_time",
+         "Incentivo" = "incentive",
+         "Tiempo_Inactividad" = "idle_time",
+         "Trabajadores_Inactivos" = "idle_men",
+         "Cambios_de_Modelo" = "no_of_style_change",
+         "Num_de_Trabajadores" = "no_of_workers",
+         "Productividad_Real" = "actual_productivity"
+         
+         )
+```
+
+
+******
+Cambiar el nombre de los valores de la variable DEPARTMENT:
+
+```{r,eval=TRUE,echo=TRUE}
+
+#Asignamos el valor en español a los valores sweing y finishing, usando también una tercera línea con finishing más un espacio.
+
+gwp$Departamento [gwp$Departamento=="sweing"] <- "coser"
+gwp$Departamento [gwp$Departamento=="finishing"] <- "rematar"
+gwp$Departamento [gwp$Departamento=="finishing "] <- "rematar"
+
+
+#Revisamos el tipo de valor de la columna:
+class(gwp$Departamento)
+
+```
+******
+Cambiar el formato de la variable DEPARTMENT de texto a numérico:
+
+```{r,eval=TRUE,echo=TRUE}
+#Cambiamos el valor de coser y rematar:
+
+gwp$Departamento [gwp$Departamento=="coser"] <- "0"
+gwp$Departamento [gwp$Departamento=="rematar"] <- "1"
+
+
+#Para cambiar el tipo de valor:
+
+gwp$Departamento <- as.numeric(gwp$Departamento)
+
+
+#Comprobamos que se haya cambiado correctamente
+
+class(gwp$Departamento)
+
+#Revisamos las primeras líneas
+
+head(gwp)
+
+```
+
+******
+Cambiar el formato de la variable over_time para que la unidad sea horas en lugar de minutos.
+```{r,eval=TRUE,echo=TRUE}
+
+#Calculamos las horas:
+gwp$Tiempo_Extra <- (gwp$Tiempo_Extra)/ 60
+
+#Comprobamos los resultados:
+class(gwp$Tiempo_Extra)
+
+head(gwp)
+
+
+```
+
+******
+# Crear variables (4 puntos)
+******
+
+Ahora vamos a crear nuevas variables a partir de las que ya tenemos.
+<ul>
+<li>Crea una nueva variable que calcule la variación (exceso o defecto) de productividad real con respecto a la fijada, tanto en valor absoluto como en valor relativo (es decir, en total hay que crear dos nuevas variables).
+<li>Imputa la mediana a los valores missing de la/s variable/s que tengan (es decir, sustituye dichos valores no informados por la mediana de la variable correspondiente). Pero no sobreescribas las variables, crea nuevas con los valores imputados.
+<li>Comprueba que todas las transformaciones se hayan realizado correctamente.
+<li>¿Han cambiado las medianas de las variables tras realizar las imputaciones? ¿Y las medias? ¿Por qué?
+</ul>
+******
+
+Variación absoluta:
+```{r,eval=TRUE,echo=TRUE}
+
+#Para calcular la variacion absoluta, usamos mutate para restar la productividad objetivo a la real. 
+#Cargamos la libreria, y hacemos el cálculo.
+library(dplyr)
+
+gwp <- gwp%>%
+  mutate (Variacion_Productividad_Absoluta = gwp$Productividad_Real-gwp$Productividad_Objetivo)
+
+#Comprobamos las primeras líneas:
+          
+head(gwp)
+```
+
+Variación relativa:
+```{r,eval=TRUE,echo=TRUE}
+#La variación relativa se puede calcular con la variación absoluta, dividiendola por la Productividad_Objetivo
+
+gwp <- gwp%>%
+  mutate (Variacion_Productividad_Relativa = gwp$Variacion_Productividad_Absoluta/gwp$Productividad_Objetivo)
+
+#Comprobamos las primeras líneas:          
+head(gwp)
+```
+******
+Creación de la mediana:
+
+```{r,eval=TRUE,echo=TRUE}
+#Calculo de medianas para la columna Num_Articulos_en_Curso
+
+library(dplyr)
+
+# Duplicamos la columna que será donde haremos la mediana:
+gwp$Mediana_articulos_curso = gwp$Num_Articulos_en_Curso
+
+# Calculamos la mediana:
+
+mediana <- mean(gwp$Mediana_articulos_curso, na.rm = TRUE)
+
+# Sustituimos los valores NA por la mediana en la nueva columna
+
+gwp$Mediana_articulos_curso[is.na(gwp$Mediana_articulos_curso)] <- mediana
+
+head(gwp)
+
+```
+
+******
+¿Han cambiado las medianas de las variables tras realizar las imputaciones? ¿Y las medias? ¿Por qué?
+```{r,eval=TRUE,echo=TRUE}
+#La mediana no debería cambiar ya que es preservada: los valores extremos siguen siendo los mismos.
+#En efecto si generamos la mediana para todas las líneas, obtendremos 1190.466, que es el valor que obteníamos para los NA.
+
+mean(gwp$Mediana_articulos_curso)
+
+#La media sí que debería cambiar ya que los NA son usados y suponen contar una mayora cantidad total de variables que dividirán la suma, por lo que el resultado cambiará.
+
+
+```
+
+rmarkdown::render("E:/Análisis de datos/R/PEC0/PEC0.rmd")
