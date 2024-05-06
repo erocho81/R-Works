@@ -1,0 +1,410 @@
+---
+title: "PEC3 - ANOVA Y PCA"
+author: "Enrique Rocho Simon"
+date: "Junio 2022"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+El objetivo de esta actividad es que el estudiante se familiarice con dos técnicas estadísticas muy útiles y de uso frecuente:
+
+<ul>
+<li> Por una parte, el test ANOVA (Analysis of Variance), el cual se aplica para analizar si existen diferencias significativas en el valor esperado de una variable numérica considerando un conjunto de muestras independientes.
+<li> Por otro lado, el PCA es un análisis de componentes principales, que se aplica frecuentemente para reducir la dimensionalidad de los datos como un preproceso previo al análisis de minería de datos.
+</ul>
+
+En esta PEC utilizaremos el conjunto de datos 'garments_worker_productivity', el mismo que se utilizó para las anteriores.
+
+******
+# Preparar el juego de datos (0.5 puntos)
+******
+
+<ul>
+<ul>
+<li>Para realizar esta PEC, puedes partir del objeto gwp generado como resultado de la PEC0
+<li>Si no realizaste la PEC0, lee el fichero "garments_worker_productivity.csv", guarda los datos en un objeto con identificador gwp, y posteriormente aplica las transformaciones que se proponían en la PEC0 (puedes utilizar la solución propuesta en el Aula)
+</ul>
+</ul>
+
+```{r,eval=TRUE,echo=TRUE}
+
+#Cargamos el package:
+
+library(readr)
+
+#Asignamos el file a gwp
+
+gwp<-read.csv('E:/Análisis de datos/R/PEC0/garments_worker_productivity.csv', sep=",", stringsAsFactors=TRUE)
+
+
+#Renombramos:
+
+library(dplyr)
+
+names(gwp)=c("Fecha", "Semana", "Departamento", "Dia", "Equipo", "productividad_fijada", "smv", "wip", "tiempo_extra", "incentivo", "tiempo_inact", "trab_inact", "Num_cambios", "Num_trab", "productividad_real")
+levels(gwp$Departamento)=c("Rematar","Rematar","Coser")
+
+dpto = ifelse(gwp$Departamento=="Rematar", 1, 0)
+
+gwp$Departamento = as.factor(dpto)
+
+gwp$tiempo_extra=gwp$tiempo_extra/60
+
+
+#Creacion de variables:
+
+library(dplyr)
+
+gwp$wip_imp=ifelse(is.na(gwp$wip), 1039, gwp$wip)
+gwp$var_prod_abs=gwp$productividad_real-gwp$productividad_fijada
+gwp$var_prod_rel=gwp$productividad_real/gwp$productividad_fijada-1
+
+head(gwp)
+
+
+```
+
+
+******
+# Comparar media entre grupos (1)
+******
+
+Estamos interesados en saber si la productividad varía según diversos factores.
+<ol>
+<li>Calcula la media y la desviación estandar de la variable productividad_real para cada valor de la variable Semana. 
+```{r,eval=TRUE,echo=TRUE,warning=FALSE, message=FALSE}
+
+library(dplyr)
+
+#Calculamos la media
+
+media<-gwp %>%
+  group_by(Semana) %>%
+  summarise_at(vars(productividad_real), list(media = mean))
+
+#Calculamos la desviación estandar
+
+sd<-gwp %>%
+  group_by(Semana) %>%
+  summarise_at(vars(productividad_real), list(desv = sd))
+
+media
+
+sd
+
+
+
+
+
+```
+<li>Ahora obtén una comparativa de los boxplot de la variable productividad_real para cada valor de la variable Semana.
+
+```{r,eval=TRUE,echo=TRUE,warning=FALSE, message=FALSE}
+
+#Usamos Ggplot2 para crear el boxplot, usando la media:
+
+library(ggplot2)
+
+
+ggplot(gwp, aes(x=Semana, y=productividad_real, fill=Semana)) +
+  geom_boxplot() +
+  stat_summary(fun=mean, geom='point', shape=20, size=8) +
+  theme(legend.position='none')
+
+
+
+
+```
+<li>¿Qué conclusiones obtienes del análisis realizado?
+
+Las medias son similares de Q1 a Q4. Hay una media superior en Q1 pero no es mucho más grande. Los máximos son casi iguales entre Q1 y Q2, pero no los mínimos (también se parecen mucho en mediana). 
+Q3 y Q4 tienen máximos y mínimos similares. 
+Q1 a pesar de tener un mínimo más alto, tiene más outliers por la zona baja.
+
+Q5 es el que tiene los valores más altos para media, max, min y tiene menos outliers. Tal vez sea más fiable este Q5 al tener menos outliers en la zona inferior que el resto de los Q.
+
+Tal vez al tener tantos outliers no podriamos decir que las muestras son significativas.
+
+</ol>
+
+******
+# ANOVA-1 (2)
+******
+
+Realiza un análisis de la varianza (ANOVA) para determinar si hay diferencias significativas en los valores medios de la variable productividad_real según los valores de la variable Semana. 
+
+
+#Para Anova también podemos plantear las siguientes Hipótesis:
+
+#Ho: Las medias de los grupos son similares
+#H1: La diferencia de medias no es igual, al menos una media es diferente.
+
+#El resumen de las medias por Q, es:
+  
+Quarter1	0.7515598			
+Quarter2	0.7437097			
+Quarter3	0.7047586			
+Quarter4	0.7090671			
+Quarter5	0.8261774	
+
+#El resumen de las desviaciones por Q, es:
+
+Quarter1	0.1613181			
+Quarter2	0.1711142			
+Quarter3	0.1756137			
+Quarter4	0.1859832			
+Quarter5	0.1838513'
+
+---------------
+
+```{r,eval=TRUE,echo=TRUE,warning=FALSE, message=FALSE}
+
+#Vamos a calcular Anova a continuación:
+
+myaov2 <- aov(productividad_real ~ Semana, data = gwp)
+
+summary(myaov2)
+
+
+#Para saber si hay diferencias entre grupos usamos Post-Hoc Tests, ya que solo con el análisis anterior tal vez no sería bastante.
+
+TukeyHSD(myaov2)
+
+```
+<ul>
+<li> ¿Cuáles son las conclusiones del análisis? 
+
+Si consideramos las hipotesis:
+Ho: Las medias de los grupos son similares
+H1: La diferencia de medias no es igual, al menos una media es diferente.
+
+El p-valor obtenido 1.17e-05  está muy por debajo de 0,05 por lo que podemos descartar la hipótesis nula y decir que las medias no son similares.
+
+<li> ¿Se podía esperar este resultado de acuerdo a los análisis realizados en el apartado anterior?
+
+En los resultados anteriores también había diferencia de medias entre los diferentes Q, sin embargo debido a los outliers tal vez no se podría confirmar la diferencia.
+
+<li> Sólo con este análisis, ¿podríamos afirmar que hay diferencias significativas en la media de la variable productividad_real para las semanas 1 y 5?
+
+Con la información anterior seria difícil afirmar su hay diferencias.
+
+Si consideramos los resultados de las medias del ejercicio anterior, se supone que hay diferencias entre las medias:
+Quarter1	0.7515598			
+Quarter5	0.8261774	
+
+Sin embargo si calculamos un TukeyHSD(myaov2) obtendremos un p-valor 0.0538084 entre Q1 y Q5, por lo que será más difícil confirmar si hay diferencias entre ambas.
+
+
+</ul>
+
+******
+# ANOVA-2 (1,5)
+******
+
+Ahora hemos realizado un ANOVA de la variable productividad_real según los valores de la variable Día.
+Se muestra la salida del ANOVA (ver fichero HTML).
+
+
+```{r,eval=TRUE,echo=TRUE,warning=FALSE, message=FALSE}
+#Calculamos el Anova para poder verlo desde aquí:
+aov2<-aov(productividad_real ~ Dia, data = gwp)
+aov2
+
+
+#Revisamos summary del anova calculado
+summary(aov2)
+
+```
+<ul>
+<li> ¿Cuáles son las conclusiones del análisis? 
+
+Según el análisis hay 5 grados de libertad.Hay 1191 grados de libertad de los residuales.
+
+La suma de los cuadrados asociados a Dia es 0,11. La suma media es 0.02171. La suma de los cuadrados de los residuales de dia es 36,30. La suma media es 0.03048.
+
+El estadístico F global del modelo Anova es 0.712. Se calcula al dividir la media de cuadrados de Día entre la suma de cuadrados de los residuales.
+
+El valor más importante es es el P valor asociado con la estadística F. 
+
+Aquí también contemplaríamos:
+
+Ho: Las medias de los grupos son similares
+H1: La diferencia de medias no es igual, al menos una media es diferente.
+
+Como el p-valor de Anova (0.614) es mayor que 0.05 no podemos descartar la hipótesis nula.
+
+</ul>
+
+******
+# Componentes principales (2)
+******
+
+<li><b>Preparacion de datos</b></li>
+Con el objetivo posterior de realizar un análisis de componentes principales (recordemos: técnica de reducción de la dimensión), vamos a crear un subconjunto de nuestra base de datos con las variables numéricas, y analizar sus correlaciones
+
+Se proporciona la matriz de correlaciones de estas variables (ver fichero HTML).
+<ul>  
+<li> Interpreta el resultado.  
+</ul>
+
+Los valores de las matrices de correlación tienen valores que van de -1 a 1. 
+Cuando el valor es 0 significa que no hay relación entre las variables.
+
+Si el valor es mayor que 0 significa que hay una relación positiva entre los valores. Si el valor es 1 significa que una correlación positiva perfecta.
+
+Si el valor es menor que 0, hay una relación negativa entre los valores, si es -1, hay una correlación negativa perfecta. Se considera que las correlaciones son más destacables a partir de 0,5 o por debajo de -0,5
+
+Las relaciones positivas más altas las podemos encontrar entre smv y tiempo extra (0,674), entre smv y num_trab (0,91). También entre tiempo extra y num_trab (0,73).
+También las hayentre productividad fijada y productividad real aunque menor (0,421).  
+
+
+<ul>
+<li> ¿Crees que la técnica PCA puede ser útil en este caso? ¿Por qué?  
+</ul>  
+
+La técnica PCA puede ser útil porque pretende reducir la dimensión o número de atributos. Se basa en el supuesto de que la mayor parte de la información de un juego de datos puede ser explicada por un número menor de variables o atributos.
+
+
+En esta matriz no hay muchas algunas relaciones cercanas a 1, entre smv-tiempo extra, smv_num_trab y tiempo_extra-num_trab por lo que puede que alguna de esas 3 variables sea redundante a la hora de explicar la variabilidad total.  
+
+<ul>
+<li> ¿Por qué crees que no se han incluido en el subconjunto las variables wip o num_cambios?  
+</ul>  
+
+Probablemente se han descartado porque num_cambios tiene muchos valores a 0 y wip muchos valores NA, por lo que tal vez la correlación no sería muy efectiva ya que quedaría distorsionada.  
+
+
+
+
+******
+# PCA (3)
+******
+Realiza un PCA con las variables (estandarizadas) del subconjunto anterior (ten en cuenta que deberás excluir los registros con algún valor perdido). Muestra la varianza explicada por cada uno de los componentes.
+```{r,eval=TRUE,echo=TRUE,warning=FALSE, message=FALSE}
+
+library(dplyr)
+
+#Creamos un subset para las columnas que aparecen en la correlación del ejercicio anterior:
+
+gwp_sel<- select(gwp, c(productividad_fijada,smv, tiempo_extra, incentivo, Num_trab, productividad_real))
+
+head (gwp_sel)
+
+
+#En este subset seleccionamos solo la información que no es NA
+gwp_no_na<- gwp_sel[complete.cases(gwp_sel),]
+
+head (gwp_no_na)
+
+#Usamos la siguiente función para ver si hay Na:
+apply(gwp_no_na, 2, function(x) any(is.na(x)))
+
+
+#Estandarizamos los datos:
+
+gwp_std <- gwp_sel %>% 
+mutate_at(c('productividad_fijada','smv', 'tiempo_extra', 'incentivo', 'Num_trab', 'productividad_real'),~(scale(.) %>% as.vector))
+
+head (gwp_std)
+
+
+#Aplicamos pca:
+pca2 <- princomp(gwp_std, scale. = TRUE)
+pca2
+
+#información acumulada, en porcentaje, por la agregación de componentes.
+print(cumsum(pca2$sdev^2)/sum(pca2$sdev^2))
+
+
+
+```
+
+Muestra cómo contribuye cada variable a cada componente:
+
+```{r,eval=TRUE,echo=TRUE,warning=FALSE, message=FALSE}
+
+#Para poder mostrar esto, revisamos loadings
+loadings<- pca2$loadings
+loadings
+
+```
+
+<ul>
+<li> ¿Cuáles son las conclusiones del análisis?
+
+Tenemos 6 componentes y 1197 observaciones.
+
+Con la información acumulada, en porcentaje por la agregación de componentes, nos indica que para el subset estandarizado, solo en el 5º componente se llega a un 98% de variabilidad. Deberíamos mantener al menos hasta el 5º componente para explicar el 98% de variabilidad del subset.
+
+Si observaramos la información acumulada en el subset no estandarizado, el 99% de variabilidad se explica con el Componente 2.
+
+
+
+<li> ¿Crees que ha sido acertada la decisión de estandarizar las variables?
+
+  El cálculo de los componentes principales depende de las unidades de medida empleadas en las variables. Es por tanto importante, antes de aplicar el PCA, estandarizar las variables para que tengan media 0 y desviación estándar 1, ya que, de lo contrario, las variables con mayor varianza dominarían al resto, aunque en el caso en que las variables estén medidas en las mismas unidades, podemos optar por no estandarizarlas.
+Si hacemos PCA sobre variables no normalizadas obtendremos loadings muy altos para variables con alta varianza. Esto llevaría a depender de un componente principal de la variable con alta varianza.  
+
+En efecto vemos que en los loadings del subset sin estandarizar todos los componentes se acercan al 1 o -1 (o son 1) en alguna variable, que son los valores máximos. El subset estandarizado tiene loadings más medios para las variables. Por eso es acertada la decisión de estandarizar.
+
+  
+<li> ¿Crees que estos datos son adecuados para realizar un PCA? En ese sentido, ¿se confirma o se desmiente lo previsto en el apartado anterior?
+
+Los datos son adecuados porque se han estandarizado. 
+
+Respecto a lo previsto en el apartado anterior habíamos previsto un peso importante y relación entre las variables smv, tiempo extra, num_trab. También había relación entre productividad fijada y productividad real.
+
+Como veremos en las preguntas siguientes, esto también se ve en el PCA.
+
+
+
+<li> Analiza cómo crece la varianza explicada a medida que aumenta el número de componentes.
+
+Con la información acumulada, en porcentaje por la agregación de componentes, nos indica que para el subset estandarizado, solo en el 5º componente se llega a un 98% de variabilidad. Deberíamos mantener al menos hasta el 5º componente para explicar el 98% de variabilidad del subset.
+
+Si observaramos la información acumulada en el subset no estandarizado, el 99% de variabilidad se explica con el Componente 2.
+
+
+<li> Analiza la contribución de cada variable a cada uno de los 2 primeros componentes.
+```{r,eval=TRUE,echo=TRUE,warning=FALSE, message=FALSE}
+
+#Volvemos a revisar loadings:
+loadings<- pca2$loadings
+
+loadings
+
+```
+Hemos de tener en cuenta que con Loadings se mueven entre un -1 y un 1. Cuanto más cerca del -1, más negativamente correlacionadas estarán las variables con los componentes y al reves con 1. Si están cerca de 0 es que no habrá correlación.
+
+Con el Componente 1 tenemos:
+<li>productividad fijada, está relacionada en un +11%
+<li>smv, está relacionado en un -58%
+<li>tiempo extra, relacionado en un -53%
+<li>incentivo no parece estar relacionado.
+<li>Num_trab, está relacionado en un -59%
+<li>productividad real está relacionado en +11%
+
+En este caso las variables smv, tiempo_extra y Num_Trab son las que están más relacionadas con el componente de manera negativa. Tiene sentido que estas 3 variables tengan un impacto similar, ya que ambas hacen referencia a productividad, tiempo de trabajo o número necesario de trabajadores. 
+
+Con el Componente 2:
+<li>productividad_fijada, relacionada en un 67%.
+<li>smv no relacionado.
+<li>tiempo_extra, no relacionado.
+<li>incentivo, relacionado en un +20%
+<li>Num_trab, relacionado en un +10%
+<li>productividad_real, relacionado en un +69%
+
+Como vemos en este caso ambas productividades están relacionadas casi en un 70% con el componente, tiene sentido ya que ambas variables hacen referencia a la productividad.
+
+Como mencionabamos antes, estos datos nos recuerdan a las relaciones que se veían en el apartado anterior, por lo que pueden confirmar lo que habíamos previsto.
+
+</ul>
+

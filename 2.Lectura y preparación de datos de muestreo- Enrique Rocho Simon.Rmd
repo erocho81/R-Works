@@ -1,0 +1,271 @@
+---
+title: "PEC1- Lectura y preparación de datos de muestreo - B0.473"
+author: "Enrique Rocho Simon"
+date: "Abril, 2022"
+output: 
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+---
+
+
+******
+# Objetivos del aprendizaje
+******
+
+El objetivo de esta actividad es avanzar en el manejo básico de R para el tratamiento de datos. 
+
+En esta PEC utilizaremos el conjunto de datos 'Garments worker productivity', el mismo que se utilizó para la PEC0.
+
+En esta PEC nos centraremos principalmente en analizar la variable "productividad real", por ser nuestra variable de interés para futuros análisis y modelos que realizaremos en las PECs posteriores.
+
+
+******
+# Preparar el juego de datos (0.5 puntos)
+******
+
+<ul>
+<li>Para realizar esta PEC, puedes partir del objeto gwp generado como resultado de la PEC0
+<li>Si no realizaste la PEC0, lee el fichero "garments_worker_productivity.csv", guarda los datos en un objeto con identificador gwp, y posteriormente aplica las transformaciones que se proponían en la PEC0 (puedes utilizar la solución propuesta en el Aula)
+</ul>
+```{r,eval=TRUE,echo=TRUE}
+#[ESPACIO RESPUESTA]
+
+#Cargamos el package:
+
+library(readr)
+
+#Asignamos el file a gwp
+
+gwp<-read.csv('E:/Análisis de datos/R/PEC0/garments_worker_productivity.csv', sep=",", stringsAsFactors=TRUE)
+
+
+#Renombramos:
+
+library(dplyr)
+
+names(gwp)=c("Fecha", "Semana", "Departamento", "Dia", "Equipo", "productividad_fijada", "smv", "wip", "tiempo_extra", "incentivo", "tiempo_inact", "trab_inact", "Num_cambios", "Num_trab", "productividad_real")
+levels(gwp$Departamento)=c("Rematar","Rematar","Coser")
+
+dpto = ifelse(gwp$Departamento=="Rematar", 1, 0)
+
+gwp$Departamento = as.factor(dpto)
+
+gwp$tiempo_extra=gwp$tiempo_extra/60
+
+
+#Creacion de variables:
+
+library(dplyr)
+
+gwp$wip_imp=ifelse(is.na(gwp$wip), 1039, gwp$wip)
+gwp$var_prod_abs=gwp$productividad_real-gwp$productividad_fijada
+gwp$var_prod_rel=gwp$productividad_real/gwp$productividad_fijada-1
+
+head(gwp)
+
+```
+
+******
+# Ordenar valores (1.5 puntos)
+******
+
+<ul>
+<li>Obtén los 10 registros con mayor y menor productividad real. Mostrar en la salida, además del valor de dicha variable, la fecha, el equipo y el departamento correspondientes.
+</ul>
+```{r,eval=TRUE,echo=TRUE}
+#Primero cargaremos la librería:
+
+library(dplyr)
+
+#Ordenamos por productividad_real más alta y más baja, asignando los resultados a dos nuevas variables:
+
+gwp_top_prod = gwp[order(gwp$productividad_real, decreasing = TRUE),] 
+gwp_low_prod = gwp[order(gwp$productividad_real, decreasing = FALSE),]
+
+
+#Ordenamos los 10 valores más altos y más bajos de las variables que hemos creado con top_n y asignamos los resultados a nuevas variableS:
+gwp_top_10_prod = top_n(gwp_top_prod, 10, gwp_top_prod$productividad_real)
+gwp_low_10_prod = top_n(gwp_low_prod , -10, gwp_low_prod $productividad_real)
+
+
+#Con Select seleccionamos las columnas que necesitamos de las nuevas variables creadas para obtener el resultado requerido:
+select(gwp_top_10_prod, c('productividad_real','Fecha', 'Equipo', 'Departamento'))
+select(gwp_low_10_prod, c('productividad_real','Fecha', 'Equipo', 'Departamento'))
+
+```
+
+******
+# Estadísticas descriptivas (2.5 puntos)
+******
+
+<ul>
+<li> Calcular la media y desviación estándar de la productividad real.
+<li> Dibujar un boxplot de la productividad real e interpretarlo.
+<li> Dibujar un diagrama de barras y uno de sectores que muestren el porcentaje de registros en cada uno de los valores posibles de la variable Semana (Quarter).
+</ul>
+
+```{r,eval=TRUE,echo=TRUE}
+#Cargamos la librería:
+
+library(dplyr)
+
+#Calculamos la media:
+mean(gwp$productividad_real)
+
+#Calculamos la desviación estándar:
+sd(gwp$productividad_real)
+
+#Creamos un boxplot de la productividad real:
+boxplot (gwp$productividad_real)
+
+```
+<Ul>
+<li> En el boxplot podemos ver que el máximo está por encima de 1, es el valor más alto.
+<li> El valor Q1 está un poco por encima por encima de 0,6.Recordamos que el Q1 es el valor que tiene al menos un 25% de valores menores o igual que él y el 75% mayores o iguales.
+<li> La mediana está un poco por debajo de 0,8. Este valor se corresponde al Q2, que es el valor central una vez ordenadas las observaciones de más pequeñas a más grandes.
+<li> El Q3 está por encima de 0,8. Este es el valor que tiene al menos el 75% de las observaciones iguales o menores que él, y el 25% mayores o iguales.
+<li> El mín, que es el valor más bajo está entre 0,2 y 0,4. Sin embargo hay bastantes outliers debajo del mínimo, que son valores atípicos. Normalmente se considera un valor atípico, el que se encuentra a 1,5 veces de distancia de Q1 o Q3.
+</ul>
+
+```{r,eval=TRUE,echo=TRUE}
+#Podemos ver con más detalle los valores que hemos mencionado así:
+summary(gwp$productividad_real)
+
+
+#Ahora vamos a generar variables, para preparar los datos y generar los gráficos requeridos.
+gwp_dias_semana = as.table(table(gwp$Semana))
+dias_semana_graf = prop.table(gwp_dias_semana)
+
+#El diagrama de barras barras será este:
+barplot(dias_semana_graf)
+
+#El diagrama de sectores será así:
+pie(dias_semana_graf)
+
+
+```
+
+****
+# Eliminación de outliers (2.5)
+
+****
+<Ul>
+<li> Eliminar los outliers de la variable productividad real y guardar los resultados en un dataframe distinto.
+<li> Comparar los boxplots de la variable productividad real entre el dataframe original y el nuevo (es preferible representarlos en una misma escala), e interpretar los resultados.
+</Ul>
+
+```{r,eval=TRUE,echo=TRUE}
+#[ESPACIO RESPUESTA]
+
+#Cargamos librerías:
+library(dplyr)
+library (ggstatsplot)
+library (DMwR2)
+
+
+#Revisamos primero como es el boxplot de la variable productividad real, tal como está ahora:
+boxplot(gwp$productividad_real, ylab='Productividad Real', xlab= 'Con Outliers')
+
+#Vamos a usar la propiedad out de boxplot.stats para conocer cuales son los outliers, nos aparecerán 54 valores:
+outliers <- boxplot.stats(gwp$productividad_real)$out
+outliers
+
+#Ahora vamos a crear un filtro para quitar los outliers de productividad real y el resultado lo vamos a asignar a una nueva variable:
+gwp_sin_outliers = filter (gwp, !productividad_real %in% outliers)
+head (gwp_sin_outliers)
+
+
+boxplot(gwp_sin_outliers$productividad_real, ylab='Productividad Real', xlab = 'Sin Outliers')
+
+#Revisamos con summary los outliers para gwp y gwp_sin_outliers, como veremos la mediana, Q1 y Q3 habrán cambiado:
+summary(gwp$productividad_real)
+summary(gwp_sin_outliers$productividad_real)
+
+
+#Ahora comparamos los 2 boxplots:
+boxplot(gwp$productividad_real,gwp_sin_outliers$productividad_real, ylab='Productividad Real' )
+```
+<Ul>
+Como vemos siguen apareciendo outliers en la nueva variable que hemos creado gwp_sin_outliers.
+
+Podemos observar que los outliers de gwp_sin_outliers, terminan donde antes estaba el mínimo en gwp, además de aparecer otro outlier en la parte superior. Esto quiere decir que se han eliminado los outliers anteriores, pero se han generado outliers nuevos.
+
+Esto se debe a que se ha modificado la mediana, Q1 y Q3 al haber hecho la eliminación de outliers como hemos visto con summary. Al cambiar esto, se recalculan los outliers, ya que estos se calculan para los valores que están a 1,5 veces de distancia de Q1 o Q3.
+</Ul>
+
+
+****
+# Agrupaciones de valores (3)
+
+****
+<Ul>
+<li> Obtener un boxplot de la variable "productividad fijada" en función de los valores de la variable Semana e interpretar los resultados.
+<li>Crear una nueva variable categórica que sea una recodificación de la variable "Productividad real" en cuatro grupos ordenados de tamaño (número de elementos) similar.
+<li> Obtener un boxplot de la variable "productividad fijada" en función de los valores de la variable obtenida anteriormente, e interpretar los resultados.
+</Ul>
+
+```{r,eval=TRUE,echo=TRUE}
+#Creamos el boxplot para productividad_fijada según la variable semana:
+library(dplyr)
+library (ggplot2)
+
+boxplot(gwp$productividad_fijada ~ gwp$Semana, xlab = 'Semana', ylab = 'productividad_fijada' )
+```
+
+<ul>
+En este Boxplot tenemos una productividad fijada igual para Quarter 3 y Quarter 4. Quarter 1 y Quarter 2 son muy similares con apenas la diferencia de un outlier. Los outliers son también muy similares entre todos los quarters excepto en el último. 
+
+Este Quarter 5 es el más diferente, ya que aunque comparte mediana con Quarter 3 y 4, sus valor mínimo se corresponde a uno de los outliers de los demás quarters ya que además tiene un Q1 inferior.
+</Ul>
+
+```{r,eval=TRUE,echo=TRUE}
+#Para crear la variable categórica primero vamos a revisar los datos con summary:
+
+summary(gwp$productividad_real)
+
+#Vamos a asignar mediana, q1, q3, max y min a nuevas variables para después generar mñas fácilmente los grupos:
+
+mediana = median (gwp$productividad_real)
+q1 = quantile (gwp$productividad_real, 0.25)
+q3 = quantile (gwp$productividad_real, 0.75)
+max = max (gwp$productividad_real)
+min = min (gwp$productividad_real)
+
+#Con las variables creadas y usando un ifelse, vamos a crear los cuatro grupos:
+
+gwp$productividad_real_categorica = ifelse(gwp$productividad_real>q3,'Muy Alta',
+                        ifelse(gwp$productividad_real>mediana & gwp$productividad_real<q3, 'Alta',
+                          ifelse(gwp$productividad_real<mediana & gwp$productividad_real>q1, 'Baja', 'Muy Baja')))
+       
+#Ahora ordenamos los grupos para que luego aparezcan en orden en el boxplot
+
+gwp$productividad_real_categorica = factor (gwp$productividad_real_categorica, levels = c ('Muy Baja', 'Baja', 'Alta', 'Muy Alta'))
+
+
+#Revisamos que se hayan creado los grupos:
+head(gwp$productividad_real_categorica)
+head (gwp)
+
+#Para asegurarnos podemos ver cuantos valores hay por grupo:
+
+table(gwp$productividad_real_categorica)
+
+
+#Ahora creamos el boxplot de productividad_fijada vs productividad_real_categorica, cambiando labels:
+
+boxplot(gwp$productividad_fijada ~ gwp$productividad_real_categorica, xlab = 'productividad_real_categorica', ylab = 'productividad_fijada')
+
+```
+  
+<ul>
+Hay valores que nos llaman la atención, como que en cada grupo tenemos outliers muy similares. 
+
+También tenemos valores iguales para los grupos de productividad real alta o muy alta. 
+
+El boxplot más diferente es el del grupo de productividad "Muy Baja"
+</Ul>
+

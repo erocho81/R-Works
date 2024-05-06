@@ -1,0 +1,445 @@
+---
+title: "PEC2- Distribución normal, Intervalos de Confianza y Regresión"
+author: "Enrique Rocho Simon"
+date: "Mayo, 2022"
+output: 
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+---
+
+
+******
+# Objetivos del aprendizaje
+******
+
+El objetivo de esta actividad es familiarizarse con algunos conceptos básicos del campo de la inferencia estadística. Específicamente, al terminar la actividad tendrías que ser capaz de:    
+
+-Distinguir entre los parámetros de una muestra y los parámetros de una población.
+
+-Calcular los intervalos de confianza para la media de una población.
+
+-Realizar contrastes de hipótesis sobre la media de la población.
+
+-Distinguir entre la distribución normal y la distribución t de Student y conocer las condiciones de aplicación de ambas.
+
+-Describir el concepto de correlación.
+
+
+-Comprender la regresión, específicamente la regresión lineal y saber interpretar y aplicar sus resultados.
+
+
+
+En esta PEC utilizaremos el conjunto de datos 'Garments worker productivity', el mismo que se utilizó para la PEC0.
+
+
+
+
+******
+# Preparar el juego de datos (1 punto)
+******
+
+<ul>
+<li>Para realizar esta PEC, puedes partir del objeto gwp generado como resultado de la PEC0.
+<li>Si no realizaste la PEC0, lee el fichero "garments_worker_productivity.csv", guarda los datos en un objeto con identificador gwp, y posteriormente aplica las transformaciones que se proponían en la PEC0 (puedes utilizar la solución propuesta en el Aula).
+<li>Usa el objeto gwp anterior y filtra el dataset para analizar solo aquellos datos que corresponden al departamento de coser (Departamento=="Coser") y además omite los valores NA. Usaremos esta casuística para las actividades de la PEC2.
+
+</ul>
+
+```{r,eval=TRUE,echo=TRUE}
+
+#Cargamos el package:
+
+library(readr)
+
+#Asignamos el file a gwp
+
+gwp<-read.csv('E:/Análisis de datos/R/PEC0/garments_worker_productivity.csv', sep=",", stringsAsFactors=TRUE)
+
+
+#Renombramos:
+
+library(dplyr)
+
+names(gwp)=c("Fecha", "Semana", "Departamento", "Dia", "Equipo", "productividad_fijada", "smv", "wip", "tiempo_extra", "incentivo", "tiempo_inact", "trab_inact", "Num_cambios", "Num_trab", "productividad_real")
+levels(gwp$Departamento)=c("Rematar","Rematar","Coser")
+
+gwp$tiempo_extra=gwp$tiempo_extra/60
+
+
+#Creacion de variables:
+
+library(dplyr)
+
+gwp$wip_imp=ifelse(is.na(gwp$wip), 1039, gwp$wip)
+gwp$var_prod_abs=gwp$productividad_real-gwp$productividad_fijada
+gwp$var_prod_rel=gwp$productividad_real/gwp$productividad_fijada-1
+
+head(gwp)
+
+#Filtra por Coser
+gwp <- filter(gwp, Departamento == "Coser")
+
+#Revisamos si hay NA en Wip, que es la única columna que tenía NA. No los hay:
+head(is.na(gwp$wip))
+
+#filtramos igualmente
+gwp <- filter(gwp, !is.na(gwp$wip))
+
+
+head(gwp)
+
+```
+
+******
+# Realizar inferencias (3 puntos)
+******
+<ul>
+<li> Se comenta que el número de trabajadores recomendados por equipo es menor que 54 (variable "Num_trab"). Suponiendo que estos datos forman una muestra representativa de la población, formula una hipótesis nula y alternativa apropiada para comprobar esta afirmación sobre la población a partir de los datos de la muestra.
+
+<li> Hacer el contraste de hipótesis con un nivel de confianza  del 95% o α = 0.05, obtener el valor crítico para comparar con el valor del estadístico de contraste e interpretar el resultado. 
+
+<li> El p-valor en un contraste de hipótesis nos da mucha información sobre el peso de la evidencia contra $H_0$ porque es el mínimo nivel de significación al que rechazaríamos la hipótesis nula con la muestra obtenida. ¿Cuál es el p-valor del test de hipotesis anterior? ¿Qué conclusiones se pueden sacar?
+
+<li>¿Se ha utilizado la distribución t-Student o la Normal? ¿Por qué?
+
+<li>Se quiere conocer el intervalo de confianza de del número medio de trabajadores en la segunda semana (Quarter 2), con un nivel de confianza del 90%. ¿Qué podemos contestar?
+
+<li>Si en lugar de utilizar un nivel de confianza del 90% hubiéramos utilizado un nivel del 95%, ¿el intervalo sería más grande o más pequeño?
+
+</ul>  
+  
+******
+&nbsp;
+
+     
+* __Formula una hipótesis nula y alternativa apropiada para comprobar esta afirmación sobre la población a partir de los datos de la muestra.__
+
+
+La Hipotesis Nula será si el num de trabajadores es menor que 54. La alternativa será que sea mayor o igual que 54.
+
+H_0: n< 54  
+H_1: n>= 54
+
+
+&nbsp;
+
+* __Hacer el contraste de hipótesis con un nivel de confianza  del 95% o α = 0.05, obtener el valor crítico para comparar con el valor del estadístico de contraste e interpretar el resultado.__
+
+
+```{r,eval=TRUE,echo=TRUE}
+
+#Calculamos variables.
+
+#Media:
+mm<-mean(gwp$Num_trab)
+#Desv.standard:
+dm<-sd(gwp$Num_trab)
+#num de muestras:
+count(gwp)
+n<-691
+#nivel de confianza:
+a<-0.95
+
+mm
+dm
+
+```
+
+Revisamos el Valor crítico:
+
+```{r,eval=TRUE,echo=TRUE}
+
+error<- qnorm(1-(1-a)/2)*dm/sqrt(n)
+error
+
+```
+
+Estos serian los extremos para un nivel de confianza del 95%:
+
+```{r,eval=TRUE,echo=TRUE}
+extIzq<- mm - error
+extDer<- mm + error
+
+extIzq
+extDer
+
+```
+Lo que significa que con un 95% de confianza el valor estará entre 51.74357 y 53.14789. Nos interesaba que el valor estuviera por debajo de 54, por lo que no rechazaremos la hipotesis nula.  
+
+
+&nbsp;
+  
+* __El p-valor en un contraste de hipótesis nos da mucha información sobre el peso de la evidencia contra $H_0$ porque es el mínimo nivel de significación al que rechazaríamos la hipótesis nula con la muestra obtenida. ¿Cuál es el p-valor del test de hipotesis anterior? ¿Qué conclusiones se pueden sacar?__
+
+```{r,eval=TRUE,echo=TRUE}
+
+pnorm(54, mm,dm, lower.tail=TRUE)
+
+```
+
+El resultado es un 0,565545, por lo que hay un 56% de posibilidades de que el valor que obtengamos esté por debajo de 54, por lo que tampoco podremos rechazar la hipótesis nula.  
+
+
+&nbsp;
+  
+* __¿Se ha utilizado la distribución t-Student o la Normal? ¿Por qué?__
+
+Se ha utilizado la normal, porque el tamaño de las muestras (691) es mayor a 30, y como indica el enunciado, es una muestra representativa. Para menos de 30 muestras se recomendaría t-Student.  
+
+
+ 
+&nbsp;
+
+* __Se quiere conocer el intervalo de confianza de del número medio de trabajadores en la segunda semana (Quarter 2), con un nivel de confianza del 90%. ¿Qué podemos contestar?__
+
+
+```{r,eval=TRUE,echo=TRUE}
+
+#Primero filtramos los resultados para la segunda semana
+library(dplyr)
+gwp_2sem <- filter(gwp, Semana == "Quarter2")
+
+head(gwp_2sem)
+
+#Calcumalos las variables:
+
+#Media
+mm2<-mean(gwp_2sem$Num_trab)
+#Desv.standard:
+dm2<-sd(gwp_2sem$Num_trab)
+#num de muestras:
+count(gwp_2sem)
+
+#Asignaremos el total de observaciones:
+n2<-188
+
+#Nivel de confianza:
+a2<-0.9
+
+error2<- qnorm(1-(1-a2)/2)*dm2/sqrt(n2)
+error2
+
+
+extIzq2<- mm2 - error2
+extDer2<- mm2 + error2
+
+extIzq2
+extDer2
+
+
+
+```
+
+El intervalo de confianza para un 90% en Quarter 2 estaría entre 52.42 y 52.59
+  
+
+&nbsp;
+
+* __Si en lugar de utilizar un nivel de confianza del 90% hubiéramos utilizado un nivel del 95%, ¿el intervalo sería más grande o más pequeño?__
+
+```{r,eval=TRUE,echo=TRUE}
+
+a3<-0.95
+
+error3<- qnorm(1-(1-a3)/2)*dm2/sqrt(n2)
+error3
+
+
+extIzq3<- mm2 - error3
+extDer3<- mm2 + error3
+
+extIzq3
+extDer3
+
+
+```
+
+El intervalo es más pequeño porque estamos aumentando el nivel de confianza. Esto es así porque a mayor nivel de confianza o precisión requerida, el intervalo o probabilidad de acierto será menor.
+&nbsp;
+&nbsp;
+
+
+******
+# Análisis de correlaciones (3 puntos)
+******
+<ul>
+Vamos a comprobar si el número de trabajadores en cada equipo se relaciona más con la medida que se emplea para definir el tiempo asignado a una tarea o con el objetivo de productividad fijado por la Dirección.
+<li>Calcula la correlación lineal de la variable "Num_trab" con las variables "smv" y "productividad_fijada".
+<li>Interpreta el resultado de ambos coeficientes de correlación.
+<li>Haz un gráfico de dispersión entre la variable "Num_trab" y la variable más relacionada con ella (de las dos utilizadas anteriormente), en el que se diferencien (indicando una leyenda con el código de colores en la parte superior derecha de la gráfica) los distintos puntos del gráfico según el día de la semana ("Dia").
+</ul>
+
+******
+&nbsp;
+
+* __Calcula la correlación lineal de la variable "Num_trab" con las variables "smv" y "productividad_fijada".__
+* __Interpreta el resultado de ambos coeficientes de correlación.__
+
+```{r,eval=TRUE,echo=TRUE}
+
+cor(gwp$Num_trab, gwp$smv)
+
+```
+
+Con respecto a "smv", las variables están correlacionadas en más de un 57% de manera positiva, lo que quiere decir que cuando aunmenta el número de trabajadores, también lo hace el smv en ese porcentaje.
+
+
+&nbsp;
+
+```{r,eval=TRUE,echo=TRUE}
+
+cor(gwp$Num_trab, gwp$productividad_fijada)
+
+```
+
+Con "productividad fijada", las variables se correlacionan en un 7,9% negativo, es decir que cuando aumenta el num de trabajadores, desciende un poco la productividad fijada.
+
+Hay que recordar que cuanto más cerca están las correlaciones de 1 o -1, más fuerte será la correlación, por lo tanto la variable más relacionada con Num_Trab es smv.
+
+&nbsp;
+
+* __Haz un gráfico de dispersión entre la variable "Num_trab" y la variable más relacionada con ella (de las dos utilizadas anteriormente), en el que se diferencien (indicando una leyenda con el código de colores en la parte superior derecha de la gráfica) los distintos puntos del gráfico según el día de la semana ("Dia").__
+
+
+```{r,eval=TRUE,echo=TRUE}
+library(ggplot2)
+
+
+ggplot(gwp, aes(x=Num_trab, y=smv, col = Dia, fill = Dia)) + geom_point()+ theme(legend.position = c(.9, .7))
+
+#otra opción de posición de la leyenda:
+
+ggplot(gwp, aes(x=Num_trab, y=smv, col = Dia, fill = Dia)) + geom_point()+theme(legend.justification = "top")
+
+
+```
+
+&nbsp;
+&nbsp;
+
+******
+# Regresión lineal (3 puntos)
+******
+<ul>
+<li>Ajusta un modelo de regresión lineal para explicar el valor de la variable "Num_trab" a partir de las variables "smv", "Num_cambios" y "productividad_fijada".
+<li>Interpreta la salida de la forma más completa posible (significatividad de las variables, coeficientes de las variables, bondad de ajuste del modelo, etc).
+<li>¿Se puede eliminar alguna variable del modelo anterior? En caso de respuesta afirmativa, ajustar un modelo de regresión lineal que no contenga esa variable.
+<li>Indicar la ecuación de la recta de regresión.
+<li>Realizar una predicción sobre el número de trabajadores en cada equipo utilizando la ecuación de la recta de regresión del último modelo con los siguientes datos: smv = 11 y un cambio (Num_cambios).
+<li> Interpreta los diferentes parámetros de la regresión, es decir el intercepto y los diferentes coeficientes o predictores.
+
+</ul>
+******
+
+&nbsp;
+
+* __Ajusta un modelo de regresión lineal para explicar el valor de la variable "Num_trab" a partir de las variables "smv", "Num_cambios" y "productividad_fijada".__
+
+```{r,eval=TRUE,echo=TRUE}
+
+
+mylm <- lm(gwp$Num_trab ~ gwp$smv + gwp$Num_cambios + gwp$productividad_fijada)
+mylm
+```
+
+&nbsp;
+
+* __Interpreta la salida de la forma más completa posible (significatividad de las variables, coeficientes de las variables, bondad de ajuste del modelo, etc).__
+
+```{r,eval=TRUE,echo=TRUE}
+#Con el siguiente summary obtenemos la información al respecto.
+
+summary (mylm)
+
+```
+
+En el P-Valor podemos obtener la significatividad. Si esos valores son menos que el nivel de significatividad estadistico preestablecido (que suele ser un 0,05), diremos que las variables son significativas.Cuantas más estrellas aparecen al lado del p-valor, más significatividad tienen. Los valores `gwp$smv` y `gwp$Num_cambios` son los que más significatividad tienen.
+
+En cuanto al t-valor, cuanto más alto es, menos probable será que el coeficiente no sea cero por casualidad, por lo que es mejor tener valores altos.En este caso también `gwp$smv` y `gwp$Num_cambios` son los que mejor lo cumplen.
+
+
+Tenemos que asegurar que el modelo sea significante antes de usarlo para predecir la variable dependiente, porque sino los valores predecidos pueden ser consecuencia de la casualidad.
+
+Respecto a error standard, cuando más cerca de 0 estén mejor para tener una mejor bondad en el modelo. En este caso gwp$productividad_fijada está más alejado de 0.
+
+
+La bondad del modelo también se mide por AIC y BIC. Se prefiere un modelo que tenga estas métrias más bajas:  
+AIC(mylm)  
+BIC(mylm)
+
+
+Ecuacion del modelo:
+
+Ec= 37.4675 + (0.7672)*x1 + (1.2373)*x2 + (-4.3889) *x3
+
+&nbsp;
+
+* __¿Se puede eliminar alguna variable del modelo anterior? En caso de respuesta afirmativa, ajustar un modelo de regresión lineal que no contenga esa variable.__
+
+Se podría eliminar gwp$productividad_fijada, ya que es la variable menos significativa, está más alejada de 0 en error standard, por lo que seguramente el modelo será mejor sin esta variable.
+
+```{r,eval=TRUE,echo=TRUE}
+mylm2 <- lm(gwp$Num_trab ~ gwp$smv + gwp$Num_cambios)
+mylm2
+
+summary (mylm2)
+
+```
+
+Indicar la ecuación de la recta de regresión.
+
+En este caso la ecuación seria:
+
+Ec=34.2413 + (0.7669)*x1+ (1.4463)*x2
+
+&nbsp;
+
+* __Realizar una predicción sobre el número de trabajadores en cada equipo utilizando la ecuación de la recta de regresión del último modelo con los siguientes datos: smv = 11 y un cambio (Num_cambios).__
+
+```{r,eval=TRUE,echo=TRUE}
+#Estas serán las variables con las que trabajaremos:
+smv_ec<- 11
+cambio_ec<- 1
+
+#Ahora usaremos la ecuación que hemos creado
+
+34.2413 + (0.7669)*smv_ec+ (1.4463)*cambio_ec
+```
+
+El num de trabajadores seria: 44.1235
+
+&nbsp;
+
+* __Interpreta los diferentes parámetros de la regresión, es decir el intercepto y los diferentes coeficientes o predictores__
+
+```{r,eval=TRUE,echo=TRUE}
+mylm$coefficients
+summary (mylm2)
+
+```
+
+Antes teníamos un Intercept de 37.46, ahora es de 34.24
+
+Esto significa que el num de trabajadores de media para 0 `gwp$smv` y 0 `gwp$Num_cambios` es 34,24
+
+```{r,eval=TRUE,echo=TRUE}
+mylm$coefficients [[1]]
+
+mylm$coefficients [[2]]
+
+```
+
+Los valores de Pr(>|t|) son mejores ahora que hemos eliminado gwp$productividad_fijada.Esto significa que el modelo es más significativo estaddisticamente
+
+El T-value general ha pasado de 15.65 a 33.73, lo que es muy bueno , ya que cuanto más alto sea este valor, es menos probable que el coeficiente sea 0 por casualidad.
+
+El error standard también ha bajado de 2.39 a 1.014, lo que es positivo también para el modelo.
+
+En cuanto a las siguiente medidas, la BIC ha mejorado bastante:  
+AIC(mylm2)  
+BIC(mylm2)
+
