@@ -1,0 +1,782 @@
+---
+title: 'Reglas de Asociación'
+author: "Enrique Rocho Simon"
+date: "Enero 2023"
+output:
+  html_document:
+    fig_height: 5
+    fig_width: 7
+    number_sections: yes
+    theme: journal
+    toc: yes
+    toc_depth: 2
+    includes:
+      in_header: 
+  pdf_document:
+    toc: yes
+  word_document: default
+---
+******
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+******
+# Introducción
+******
+## Descripción de la PEC a realizar
+La prueba está estructurada en un total de 8 ejercicios prácticos. Es necesario hacerlos todos para obtener una valoración máxima.
+
+## Criterios de valoración
+Pregunta  | Criterio de valoración        | Peso
+----- | ---------------------------------- | ------
+1  | Se responde razonadamente a la pregunta realizada | 5%
+2  | Se explican los distintos métodos que acepta la función | 5%
+2  | Se aplican los métodos y se muestran los resultados | 10%
+3  | Se listan las reglas solicitadas y se comenta su implicación  | 10%
+3  | Se genera y se comenta el gráfico solicitado  | 5%
+3  | Se genera y se comenta el gráfico solicitado  | 5%
+4  | Se explica para que sirve la función coverage()  | 5%
+4  | Se listan las reglas solicitadas y se contesta la cuestion  | 10%
+4  | Se genera y se comenta el gráfico solicitado | 10%
+5  | Se generan y se muestran los sets solicitados  | 5%
+5  | Se listan las reglas solicitadas  | 10%
+6  | Se explica el significado de los 3 conceptos solicitados  | 5%
+7  | Se muestran las reglas solicitadas en cada caso y se comentan los resultados | 10%
+8  | Se plasma a través de una redacción extensa el conocimiento obtenido a partir de las reglas generadas  | 5%
+
+## Formato y fecha de entega
+El formato de entrega es: studentname-PECn.html  
+Fecha de Entrega: 29/01/2023  
+Se debe entregar la PEC en el buzón de entregas del aula  
+
+******
+# Información técnica de la PEC
+******
+A continuación, se ofrece información técnica sobre el entorno en el que se ha generado este documento
+```{r,eval=TRUE,echo=TRUE}
+# Encoding utilizado: UTF-8
+
+# Datos de sistema operativo y versión R
+version
+
+# Versión de los paquetes utilizados:
+# Paquete arules
+packageVersion("arules")
+
+# Paquete arulesViz
+packageVersion("arulesViz")
+```
+
+******
+# Base teórica
+******
+Para realizar la práctica se recomienda la lectura del punto 3.4 del material didáctico. Este punto se centra en la búsqueda de asociaciones, las cuales en nuestro caso se darán entre las características de la población adulta de USA.
+
+El algoritmo **apriori** fue diseñado para la búsqueda de asociaciones entre los productos que forman parte de la cesta de la compra en el supermercado, hipermercado o gran superficie. El objetivo era determinar qué productos eran causa de la compra de otros. Sin embargo, el algoritmo **apriori** puede generalizarse para la búsqueda de asociaciones entre cualquier conjunto de items.  
+
+En esta PEC el objetivo será buscar asociaciones y relaciones entre algunas de las características de la población adulta de USA. Se han identificado una serie de características de la misma y se quiere averiguar si existen relaciones entre ellas.
+
+Para ello utilizaremos el paquete **R** denominado **arules** del que podréis encontrar información extensa en el siguiente enlace https://cran.r-project.org/web/packages/arules/vignettes/arules.pdf  
+
+******
+# Descripción del problema
+******
+Vamos a analizar la relación entre las características que definen la población adulta de USA según las siguientes variables.  
+
+01. age
+02. workclass  
+03. fnlwgt: final weight
+04. education
+05. education-num
+06. marital-status
+07. occupation
+08. relationship  
+09. race  
+10. sex  
+11. capital-gain
+12. capital-loss
+13. hours-per-week  
+14. native-country  
+15. income
+
+Podéis encontrar más información sobre el juego de datos en el siguiente enlace https://archive.ics.uci.edu/ml/datasets/adult
+
+******
+# Cargar el juego de datos
+******
+El juego de datos forma parte de los ejemplos del paquete **arules**, por lo que una vez cargado el paquete simplemente tendremos que llamarlo. Para poder ser usado por algoritmos de búsqueda de asociaciones el juego de datos debe tener una estructura de transacciones, en la que cada fila represente una transacción, por ejemplo, en una cesta de la compra diríamos que cada fila representa una compra.  
+
+En nuestro caso una transacción o fila del juego de datos representa un individuo de la población de USA.  
+
+La generación de reglas de asociación requiere que las características a estudiar sean categóricas y no continuas, por este motivo se deberá realizar un proceso de conversión de las variables continuas en categóricas, para ello nos apoyaremos en la función de **R** **cut()**.  
+
+
+```{r,eval=TRUE,echo=TRUE}
+library(arules)
+data("AdultUCI")
+
+# Proceso de categorización de variables continuas
+AdultC <- AdultUCI
+AdultC$age <- cut(AdultUCI$age, c(15,25,30,35,45,55,65,100))
+AdultC$workclass <- AdultUCI$workclass
+AdultC$fnlwgt <- cut(AdultUCI$fnlwgt, c(12200,20000,50000,100000,500000,750000,1000000,1500000))
+AdultC$education <- AdultUCI$education
+AdultC$`education-num` <- cut(AdultUCI$`education-num`, c(1,5,10,15,20))
+AdultC$`marital-status` <- AdultUCI$`marital-status`
+AdultC$occupation <- AdultUCI$occupation
+AdultC$relationship <- AdultUCI$relationship
+AdultC$race <- AdultUCI$race
+AdultC$sex <- AdultUCI$sex
+AdultC$`capital-gain` <- cut(AdultUCI$`capital-gain`,c(0,15000,20000,30000,40000,50000,60000,80000,100000))
+AdultC$`capital-loss` <- cut(AdultUCI$`capital-loss`, c(0,500,1000,2000,3000,4000,5000))
+AdultC$`hours-per-week` <- cut(AdultUCI$`hours-per-week`, c(0,10,20,30,50,60,80,100))
+AdultC$`native-country` <- AdultUCI$`native-country`
+AdultC$income <- AdultUCI$income
+```
+
+
+******
+# Función arules()
+******
+
+En R el juego de datos debe estar en formato **transaction**. Si no lo está, deberemos usar comandos de **R** para proceder a su conversión.  
+
+Observamos que en el proceso de generación de reglas exigimos un soporte y una confianza mínimos.  
+
+```{r,eval=TRUE,echo=TRUE}
+# Conversión del juego de datos a formato transacción
+Adult = as(AdultC, "transactions")
+
+# Visualizamos un histograma de frecuencias
+itemFrequencyPlot(Adult,topN=20,type="absolute")
+
+# Generación de reglas con soporte y confianza mínimos
+rules = apriori(Adult, parameter=list(support=0.01, confidence=0.7, maxlen=7))
+
+# Listado de reglas obtenidas 
+rules
+```
+
+
+Vemos como el número de reglas que se han formado superan las 170000, por ello es importante poder filtrar entre las reglas generadas, siendo tarea del analista identificar las más representativas o las que poseen información relevante. 
+
+## Filtrado y selección de las reglas
+Mostramos, a continuación, formas distintas de filtrado de reglas. En primer lugar, utilizamos el criterio "lift" y observamos como las reglas obtenidas aunque poseen un "lift" elevado son reglas triviales, que relacionan en nivel de educación con los años de estudio. Es evidente que tener un doctorado está relacionado con un número elevado de años de estudio. Alguna información se puede extraer de la tercera y cuarta regla con mayor elevación, que está en el hecho de ser de raza blanco se añade a la parte izquierda de la regla (antecedente) y aunque se reduce algo el soporte la confianza sigue siendo 1. 
+
+
+```{r,eval=TRUE,echo=TRUE}
+# Listamos las 4 reglas con mayor lift
+inspect(head(sort(rules, by="lift"),4));
+```
+
+Visualizamos ahora el resultado de la calidad de las reglas obtenido con la función `quality()`. Si nos fijamos en las 4 primeras reglas que se muestran, vemos que estas se corresponden con reglas con mucho soporte aunque con lift=1, lo que implicaría que dichas reglas no contienen información, simplemente están ligadas con características muy frecuentes en la muestra. Si inspeccionamos la regla con mayor elevación (lift=19.79814) vemos que el resultado vuelve a ser trivial. 
+```{r,eval=TRUE,echo=TRUE}
+# Visualizamos la calidad de las reglas generadas 
+head(quality(rules))
+# Inspeccionamos la regla con mayor lift entre las 6 que se muestran.
+inspect(rules[quality(rules)$count==509][1])
+
+# Generamos gráfico de frecuencias por elevación
+plot(quality(rules)$lift,quality(rules)$count)
+```
+En general vemos como es difícil encontrar reglas que aporten conocimiento relevante. Una solución podría ser eliminar alguna de las variables con información redundante. Por ejemplo, eliminamos la variable educación numérica y volvemos a hacer el análisis anterior. En este caso observamos como la quinta regla con elevación superior a 2 ya contiene información no tan trivial, relacionando los ingresos con el estado cívil.
+```{r,eval=TRUE,echo=TRUE}
+AdultC2<-AdultC[,-5]
+Adult2 = as(AdultC2, "transactions")
+
+# Visualizamos un histograma de frecuencias
+itemFrequencyPlot(Adult2,topN=20,type="absolute")
+
+# Generación de reglas con soporte y confianza mínimos
+rules2 = apriori(Adult2, parameter=list(support=0.01, confidence=0.7, maxlen=7))
+
+# Listado de reglas obtenidas 
+rules2
+
+head(quality(rules2))
+# Inspeccionamos la regla con mayor lift entre las 6 que se muestran.
+inspect(rules2[quality(rules2)$count==513][1])
+
+# Generamos gráfico de frecuencias por elevación
+plot(quality(rules2)$lift,quality(rules2)$count)
+```
+
+A continuación, volvemos a las reglas obtenidas con la base de datos original y mostramos más tecnicas de filtrado de reglas.  
+
+```{r,eval=TRUE,echo=TRUE}
+# Extracción de reglas con una confianza superior a 0.8
+subrules = rules[quality(rules)$confidence > 0.8]
+ 
+subrules
+```
+
+Filtramos las 20 reglas con mayor elevación y posteriormente las listamos
+
+```{r,eval=TRUE,echo=TRUE}
+subrules2 = head(sort(rules, by="lift"), 20);
+ 
+subrules2
+
+inspect(subrules2)
+
+oneRule = sample(rules, 1);
+ 
+inspect(oneRule);
+```
+
+
+******
+# Visualizaciones de reglas
+******
+La forma más habitual de trabajar con reglas es listarlas en forma de tabla, que es lo que hemos hecho hasta ahora. A continuación, listamos la 10 primeras reglas del conjunto "rules" indicando algunas opciones de visualización. En el resultado se observan que las primeras 4 reglas no poseen antecedente, lo que implica que este no existe, y la consecuencia como tal ya cumple los criterios establecidos para la búsqueda de las reglas "(support=0.01, confidence=0.7, maxlen=7)". El resto de las reglas tienen antecedente y, por ejemplo, la quinta regla ya la hemos comentado en la sección anterior. 
+```{r,eval=TRUE,echo=TRUE}
+inspectRules <- inspect(rules[1:10], ruleSep = "--->", itemSep = " + ", setStart = "", setEnd ="", linebreak = FALSE)
+knitr::kable(inspectRules)
+```
+
+Sin embargo, existen técnicas más gráficas como los árboles de reglas que muestran como se relacionan los distintos items de las variables. Por ejemplo, en la siguiente gráfica se observa como desde el item "capital-gain=(1.5e+04,2e+04]" sale una flecha con dirección a "marital-status=Married-civ-spouse" y otra con dirección a "race=White", lo que indica que estos dos últimos items comparten un mismo antecedente.
+```{r,eval=TRUE,echo=TRUE}
+library(arulesViz)
+# Gráfico basado en árboles de reglas
+plot(rules[1:10], method="graph")
+```
+
+Algunos gráficos de puntos o en forma de matriz también nos permiten analizar como se distribuyen los valores del soporte, la confianza o la elevación de las reglas.
+```{r,eval=TRUE,echo=TRUE}
+# Gráfico de puntos
+plot(rules[1:50], measure=c("support", "confidence"), shading="lift")
+
+plot(rules[1:50], shading="order", control=list(main = "Two-key plot"))
+
+# Comparando rhs con lhs
+plot(rules[1:50], method="matrix", measure="lift")
+```
+
+
+******
+# Función eclat()
+******
+
+Una aproximación distinta puede ser usar la función **R** **eclat()** para identificar los valores más significativos de las distintas características. El objetivo es identificar los items o subconjuntos de items más frecuentes entre un conjunto de transacciones. También podemos identificar los subconjuntos de items según su número (1 item, 2 items...). Finalmente, al conjunto de combinaciones creados se añade una columna con la confianza de las reglas que podrían generarse con cada subconjunto de items.
+
+```{r,eval=TRUE,echo=TRUE}
+itemFrequencyPlot(Adult, support = 0.1, cex.names=0.8)
+ 
+# Creamos sets o combinaciones de características según su relevancia.
+fsets = eclat(Adult, parameter = list(support = 0.05), control = list(verbose=FALSE));
+
+summary(fsets)
+
+# Seleccionamos los sets con un solo item o característica
+singleItems = fsets[size(items(fsets)) == 1];
+inspect(singleItems)
+
+singleSupport = quality(singleItems)$support;
+ 
+names(singleSupport) = unlist(LIST(items(singleItems), decode = FALSE));
+ 
+head(singleSupport, n = 5);
+ 
+
+itemsetList = LIST(items(fsets), decode = FALSE);
+ 
+itemsetList[1:6]
+
+# Determinamos la confianza de cada set
+allConfidence = quality(fsets)$support / sapply(itemsetList, function(x) max(singleSupport[as.character(x)]));
+ 
+quality(fsets) = cbind(quality(fsets), allConfidence);
+ 
+summary(fsets)
+
+```
+
+
+******
+# Preguntas
+******
+
+******
+## Pregunta 1
+******
+Al inicio de la práctica, utlizando la función **cut()** se realiza una tarea de categorización o discretización de las variables continuas del juego de datos AdultUCI y se genera la base de datos AdultC.  Si observáis algunos valores de la nueva base de datos AdultC son "NA". Explicad a que se debe la aparición de estos "NA".
+
+### Respuesta 1
+
+```{r,eval=TRUE,echo=TRUE}
+
+#Revisamos qué columna a la que se ha aplicado cut tiene NA:
+
+sum(is.na(AdultC$age))
+sum(is.na(AdultC$fnlwgt))
+sum(is.na(AdultC$`education-num`))
+sum(is.na(AdultC$`capital-gain`))
+sum(is.na(AdultC$`capital-loss`))
+sum(is.na(AdultC$`hours-per-week`))
+
+```
+
+Las columnas que tienen NA son:
+
+```{r,eval=TRUE,echo=TRUE}
+#sum(is.na(AdultC$`education-num`))
+
+#[1] 83
+
+#sum(is.na(AdultC$`capital-gain`))
+
+#[1] 44807
+
+#sum(is.na(AdultC$`capital-loss`))
+
+#[1] 46560
+```
+
+
+```{r,eval=TRUE,echo=TRUE}
+
+#Revisaremos `education-num`
+#¿Cuales son las filas con NA de `education-num`?
+
+which(is.na(AdultC$`education-num` ))
+
+#Vamos a revisar la fila 225, que es una de las que nos ha dado NA:
+AdultC[225,]
+
+#Revisamos cómo era antes de la categorización:
+AdultUCI[225,]
+
+```
+
+El valor anterior era 1. Parece que muchos de los valores que antes eran 1 ahora son NA.
+Esto se debe a la división que se ha elegido para los intervalos en cut:
+
+```{r,eval=TRUE,echo=TRUE}
+#AdultC$`education-num`<- cut(AdultUCI$`education-num`, c(1,5,10,15,20))
+```
+
+La numeración no solo nos marca el valor del intervalo, sino el valor máximo y mínimo. Lo que sea 1 o menor y 20 o mayor, se convertirá en NA.
+
+Para solucionarlo se podría usar, entre otras, la siguiente alternativa:
+
+```{r,eval=TRUE,echo=TRUE}
+#cut(AdultUCI$`education-num`, c(0,1,5,10,15,20,100))
+```
+
+******
+## Pregunta 2
+******
+Alternativamente a la función **cut()**, el paquete **arules** dispone de la función **discretize()** para proceder a realizar tareas de categorización de variables contínuas.  
+
+Explica 4 de los métodos de discretización acepta esta función y aplica cada método en la tabla AdultUCI para categorizar sus variables continuas.  
+
+**Atención!** El método "frequency" puede dar el siguiente error "Some breaks are not unique, use fewer breaks for the data".
+Es normal, simplemente reducid el número de intervalos.
+
+### Respuesta 2
+
+> Los métodos de discretización de esta función son:
+
+#"interval"= amplitud de intervalo similar. Cada intervalo tiene la misma amplitud a partir de los datos de las variables, es decir, por ejemplo para AdultUCI$age:
+
+```{r,eval=TRUE,echo=TRUE}
+#[17,26.1) [26.1,35.2) [35.2,44.4) [44.4,53.5) [53.5,62.6) [62.6,71.8) [71.8,80.9) [80.9,90]
+#Cada intervalo tiene una amplitud de 9.1
+```
+
+#"frequency"= misma frecuencia para los intervalos. Todos los intervalos de los grupos son seleccionados de manera que todos los grupos contienen la misma cantidad de valores numéricos. Los valores numéricos son asignados al grupo que representa el rango que cubre el valor numérico. Por ejemplo para AdultUCI$fnlwgt, tenemos una cantidad similar de datos para cada intervalo (puede haber variables que cumplan mejor este método que otras)
+
+```{r,eval=TRUE,echo=TRUE}
+#[1.23e+04,7.97e+04) [7.97e+04,1.18e+05) [1.18e+05,1.52e+05) [1.52e+05,1.78e+05) [1.78e+05,2.01e+05) 
+#               6106                6105                6105                6105                6103
+               
+#[2.01e+05,2.38e+05) [2.38e+05,3.08e+05) [3.08e+05,1.49e+06] 
+#               6107                6105                6106 
+```
+
+#"cluster" (k-means clustering): intentará ajustar k-clusters para cada input y después asignar cada observación a un cluster. 
+
+#"fixed": en este caso damos nosotros los valores de los intervalos, como en el caso de cut().
+
+
+```{r,eval=TRUE,echo=TRUE}
+summary(AdultUCI)
+head(AdultUCI)
+```
+
+
+>Vamos a aplicar los diferentes metodos de discretización sobre las variables continuas.
+
+
+>MÉTODO INTERVAL:
+
+```{r,eval=TRUE,echo=TRUE}
+AdultInt <- AdultUCI
+
+
+#age
+AdultInt$age <- discretize(AdultUCI$age, method = "interval", breaks = 8)
+head(AdultInt$age)
+summary(AdultInt$age)
+
+#fnlwgt
+AdultInt$fnlwgt <- discretize(AdultUCI$fnlwgt, method = "interval", breaks = 8)
+head(AdultInt$fnlwgt)
+summary(AdultInt$fnlwgt)
+
+#`education-num`
+AdultInt$`education-num` <- discretize(AdultUCI$`education-num`, method = "interval", breaks = 5)
+head(AdultInt$`education-num`)
+summary(AdultInt$`education-num`)
+
+#`capital-gain`
+AdultInt$`capital-gain` <- discretize(AdultUCI$`capital-gain`, method = "interval", breaks = 9)
+head(AdultInt$`capital-gain`)
+summary(AdultInt$`capital-gain`)
+
+#`capital-loss`
+AdultInt$`capital-loss` <- discretize(AdultUCI$`capital-loss`,method = "interval", breaks = 7)
+head(AdultInt$`capital-loss`)
+summary(AdultInt$`capital-loss`)
+
+#`hours-per-week`
+AdultInt$`hours-per-week` <- discretize(AdultUCI$`hours-per-week`,method = "interval", breaks = 8)
+head(AdultInt$`hours-per-week`)
+summary(AdultInt$`hours-per-week`)
+```
+
+
+
+>MÉTODO FREQUENCY:
+
+```{r,eval=TRUE,echo=TRUE}
+AdultFre <- AdultUCI
+
+#age
+AdultFre$age <- discretize(AdultUCI$age, method = "frequency", breaks = 8)
+head(AdultFre$age)
+summary(AdultFre$age)
+
+#fnlwgt
+AdultFre$fnlwgt <- discretize(AdultUCI$fnlwgt, method = "frequency", breaks = 8)
+head(AdultFre$fnlwgt)
+summary(AdultFre$fnlwgt)
+
+#`education-num`
+#Cambiamos el numero de breaks debido a error de "only unique breaks are used...":
+AdultFre$`education-num` <- discretize(AdultUCI$`education-num`, method = "frequency", breaks = 4)
+head(AdultFre$`education-num`)
+summary(AdultFre$`education-num`)
+
+#`capital-gain`
+#Siempre vamos a tener error de "only unique breaks are used..." aunque reduzcamos el número de breaks, y lo agrupara solo en 1 intervalo, por lo que dejaremos breaks = 1
+AdultFre$`capital-gain` <- discretize(AdultUCI$`capital-gain`, method = "frequency", breaks = 1)
+head(AdultFre$`capital-gain`)
+summary(AdultFre$`capital-gain`)
+
+#`capital-loss`
+#Siempre vamos a tener error de "only unique breaks are used..." aunque reduzcamos el número de breaks, y lo agrupara solo en 1 intervalo, por lo que dejaremos breaks = 1
+AdultFre$`capital-loss` <- discretize(AdultUCI$`capital-loss`,method = "frequency", breaks = 1)
+head(AdultFre$`capital-loss`)
+summary(AdultFre$`capital-loss`)
+
+#`hours-per-week`
+#Siempre vamos a tener error de "only unique breaks are used..." aunque reduzcamos el número de breaks, y lo agrupara solo en 1 intervalo, por lo que dejaremos breaks = 1
+AdultFre$`hours-per-week` <- discretize(AdultUCI$`hours-per-week`,method = "frequency", breaks = 1)
+head(AdultFre$`hours-per-week`)
+summary(AdultFre$`hours-per-week`)
+```
+
+
+>MÉTODO CLUSTER:
+
+```{r,eval=TRUE,echo=TRUE}
+AdultClu <- AdultUCI
+
+#age
+AdultClu$age <- discretize(AdultUCI$age, method = "cluster", breaks = 8)
+head(AdultClu$age)
+summary(AdultClu$age)
+
+#fnlwgt
+AdultClu$fnlwgt <- discretize(AdultUCI$fnlwgt, method = "cluster", breaks = 8)
+head(AdultClu$fnlwgt)
+summary(AdultClu$fnlwgt)
+
+#`education-num`
+AdultClu$`education-num` <- discretize(AdultUCI$`education-num`, method = "cluster", breaks = 5)
+head(AdultInt$`education-num`)
+summary(AdultInt$`education-num`)
+
+#`capital-gain`
+AdultClu$`capital-gain` <- discretize(AdultUCI$`capital-gain`, method = "cluster", breaks = 9)
+head(AdultClu$`capital-gain`)
+summary(AdultClu$`capital-gain`)
+
+#`capital-loss`
+AdultClu$`capital-loss` <- discretize(AdultUCI$`capital-loss`,method = "cluster", breaks = 7)
+head(AdultClu$`capital-loss`)
+summary(AdultClu$`capital-loss`)
+
+#`hours-per-week`
+AdultClu$`hours-per-week` <- discretize(AdultUCI$`hours-per-week`,method = "cluster", breaks = 8)
+head(AdultClu$`hours-per-week`)
+summary(AdultClu$`hours-per-week`)
+```
+
+
+
+>MÉTODO FIXED:
+
+```{r,eval=TRUE,echo=TRUE}
+AdultFix <- AdultUCI
+
+#age
+AdultFix$age <- discretize(AdultUCI$age, method = "fixed", breaks = c(15,25,30,35,45,55,65,100))
+head(AdultFix$age)
+summary(AdultFix$age)
+
+#fnlwgt
+AdultFix$fnlwgt <- discretize(AdultUCI$fnlwgt, method = "fixed", breaks = c(12200,20000,50000,100000,500000,750000,1000000,1500000))
+head(AdultFix$fnlwgt)
+summary(AdultFix$fnlwgt)
+
+
+#`education-num`
+AdultFix$`education-num` <- discretize(AdultUCI$`education-num`, method = "fixed", breaks = c(1,5,10,15,20))
+head(AdultFix$`education-num`)
+summary(AdultFix$`education-num`)
+
+#`capital-gain` 
+AdultFix$`capital-gain` <- discretize(AdultUCI$`capital-gain`, method = "fixed", breaks = c(0,15000,20000,30000,40000,50000,60000,80000,100000))
+head(AdultFix$`capital-gain`)
+summary(AdultFix$`capital-gain`)
+
+#`capital-loss`
+AdultFix$`capital-loss` <- discretize(AdultUCI$`capital-loss`,method = "fixed", breaks = c(0,500,1000,2000,3000,4000,5000))
+head(AdultFix$`capital-loss`)
+summary(AdultFix$`capital-loss`)
+
+#`hours-per-week`
+AdultFix$`hours-per-week` <- discretize(AdultUCI$`hours-per-week`,method = "fixed", breaks = c(0,10,20,30,50,60,80,100))
+head(AdultFix$`hours-per-week`)
+summary(AdultFix$`hours-per-week`)
+
+
+```
+
+
+
+
+******
+## Pregunta 3
+******
+1. Lista las 10 reglas del conjunto **rules** con mayor confianza y con soporte superior a 0.4. Comente en este caso si algunas de estas reglas no aportan información relevante.
+2. Genere un gráfico de puntos que represente las 200 primeras reglas con más soporte. Los ejes del gráfico serán el soporte y la confianza.
+3. Obtenga un gráfico en forma de árbol de reglas donde se representen las reglas seleccionadas en el punto 1 de esta misma pregunta. Realice una interpretación del gráfico obtenido en términos generales y con un ejemplo a modo ilustrativo.
+
+
+### Respuesta 3
+
+```{r,eval=TRUE,echo=TRUE}
+
+
+#1.Lista las 10 reglas del conjunto **rules** con mayor confianza y con soporte superior a 0.4. Comente en este caso si algunas de estas reglas no aportan información relevante.
+
+#Primero hacemos subset de support mayor que 0.4
+Conf04 = rules[quality(rules)$support > 0.4]
+Conf04
+
+#Ahora ordenamos las 10 reglas con más confianza
+Top10conf= head(sort(Conf04, by="confidence"),10)
+Top10conf
+
+
+```
+
+#Efectivamente hay reglas que no aportan información relevante, como por ejemplo en la regla con más confianza, donde relationship=Husband y Sex= Male es redundante.
+#Las reglas 1 a 5 en general aportan poca información a pesar de tener más confianza y se refieren a los mismos datos. 
+
+
+```{r,eval=TRUE,echo=TRUE}
+
+#2. Genere un gráfico de puntos que represente las 200 primeras reglas con más soporte. Los ejes del gráfico serán el soporte y la confianza.
+
+#Creamos subset:
+Top200sup = head(sort(rules, by="support"), 200);
+
+inspect(head(Top200sup))
+
+#plot
+library(arulesViz)
+
+plot(Top200sup, method = "scatterplot", measure="support")
+```
+
+
+```{r,eval=TRUE,echo=TRUE}
+
+#3.Obtenga un gráfico en forma de árbol de reglas donde se representen las reglas seleccionadas en el punto 1 de esta misma pregunta. Realice una interpretación del gráfico obtenido en términos generales y con un ejemplo a modo ilustrativo.
+
+library(arulesViz)
+
+# Gráfico basado en árboles de reglas
+
+plot(Top10conf[1:10], method="graph")
+
+```
+
+Cada punto hace referencia a una de las 10 rules que hemos filtrado 10 con mayor confianza y  soporte superior a 0.4. Los puntos más grandes hacen referencia a un mayor soporte y los más rojos a una mayor elevación. 
+Las flechas que van desde una rule (punto) hasta un item (race, relationship...) son RHS, y al revés, flechas que van del item a la rule son LHS.
+En el caso de Sex=Male, hay flechas que se dirigen a native-country=United-States, a marital-status=Married-civ-spouse y a relationship=Husband, lo que implica que estos tres items comparten antecedente.
+Para race=White también tenemos flechas que van a native-country=United-States y fnlwtg=(1e+05,5e+05], por lo que estos últimos también comparten antecedente. 
+
+
+******
+## Pregunta 4
+******
+1. Investigad el funcionamiento de la función **coverage()** y aplicadlo al conjunto de reglas **rules**.
+2. Lista las 15 reglas con **coverage** más bajo. Describa que implica la igualdad **coverage=support**.
+3. Genera un gráfico de soporte por **coverage** y describa la relación existente entre ambos resultados.
+
+### Respuesta 4
+
+```{r,eval=TRUE,echo=TRUE}
+
+#1.Investigad el funcionamiento de la función **coverage()** y aplicadlo al conjunto de reglas **rules**.
+
+#Representa la medida de cuanto a menudo se puede aplica una rule. Son la cantidad de instancias que se predicen correctamente. 
+#Se puede calcular a partir de las medidas de calidad de las rules (support y confianza). Si estos valores no están presentes, el soporte de LHS se calcula usando los datos proporcionados en transacciones. 
+
+
+quality(rules) <- cbind(quality(rules), coverage = coverage(rules))
+
+inspect(head(rules))
+
+#2. Lista las 15 reglas con **coverage** más bajo. Describa que implica la igualdad **coverage=support**.
+
+Last15Cov = tail(sort(rules, by="coverage"), 15)
+inspect(Last15Cov)
+
+```
+
+Respecto a la igualdad coverage=support, vemos que también implica que confidence es = 1. Las 15 reglas también tienen el mismo count (489). 
+Coverage es también llamada LHS-support, es el soporte de la parte izquierda de la asociación. Representa la medida de cuanto a menudo la regla puede ser aplicada. Puede ser calculada mediante soporte y confianza. 
+
+
+```{r,eval=TRUE,echo=TRUE}
+#3.Genera un gráfico de soporte por **coverage** y describa la relación existente entre ambos resultados.
+
+plot(quality(rules)$coverage,quality(rules)$support)
+
+```
+
+
+Coverage y support están muy relacionadas en cuanto a que un aumento de una supone un aumento de la otra en un valor muy similar además. Recordemos que Coverage puede ser calculada mediante las medidas de calidad de las reglas, soporte y confianza. 
+
+
+******
+## Pregunta 5
+******
+1. A partir del conjunto de reglas fsets generado con la función **eclat()** en el enunciado de la PEC, genera sets (conjuntos) de 3 items o caraterísticas (antecedentes).
+2. A partir del set de 3 items generado, lista las 3 reglas con mayor soporte.
+
+### Respuesta 5
+
+```{r,eval=TRUE,echo=TRUE}
+#1.A partir del conjunto de reglas fsets generado con la función **eclat()** en el enunciado de la PEC, genera sets (conjuntos) de 3 items o caraterísticas (antecedentes).
+
+# Seleccionamos sets de 3 características
+ThreeItems = fsets[size(items(fsets)) == 3];
+inspect(head(ThreeItems))
+
+
+#2. A partir del set de 3 items generado, lista las 3 reglas con mayor soporte.
+inspect(head(sort(ThreeItems, by="support"),3))
+
+```
+
+
+******
+## Pregunta 6
+******
+Selecciona una de las reglas generadas en algunas de las preguntas anteriores y comenta los valores de soporte, confianza y elevación que tiene asociados. ¿Qué significa cada uno de los 3 conceptos?   
+
+### Respuesta 6
+```{r,eval=TRUE,echo=TRUE}
+# Por ejemplo, usamos el código del enunciado, donde se mencionaban las reglas con más elevación:
+
+inspect(head(sort(rules, by="lift"),4))
+
+```
+
+En el caso de las 2 primeras líneas, tenemos un suporte de 0.01216166, confianza 1 y elevación 82.22559.
+
+El soporte nos dice cúanto es de popular un grupo de items, medido en la proporción de transacciones en el que el grupo aparece. En este caso el soporte es del 1,216166 %. Normalmente se establece un márgen de soporte para reducir el número de reglas.
+
+La confianza nos indica cómo de posible es que un item aparezca si se selecciona otro, expresado cómo {X -> Y}
+Se mide por la proporción de reglas con un item (X), en el que el otro item también aparece (Y). Puede ser interpretada como una estimación de la probabilidad. Es la probabilidad de encontrar rhs en la regla si también contiene lhs.
+En este caso la confianza es del 100%.
+
+La elevación nos indica cómo es de probable que aparezca el item Y si aparece el item X, controlando cómo de populares son tanto X como Y. 
+Si lift =1 significa que no hay asociación entre los items.
+Si el lift es >1, indica que hay propabilidad de que Y aparezca a la vez que X.
+Si el lift es <1, indica que hay poca propabilidad de que Y aparezca a la vez que X.
+En este ejemplo tenemos un lift de 82.22559, por lo que la probabilidad de que lhs y rhs aparezcan a la vez es alta.
+
+
+
+******
+## Pregunta 7
+******
+Lista las 3 reglas con mayor soporte, las 4 con mayor confianza y las 6 con mayor elevación. Comenta si coinciden o no y describe sus principales características.
+
+
+### Respuesta 7
+
+```{r,eval=TRUE,echo=TRUE}
+
+#3 Con mayor soporte
+inspect(head(sort(rules, by="support"),3))
+
+#4 con mayor confianza
+inspect(head(sort(rules, by="confidence"),4))
+
+#6 con mayor elevación
+inspect(head(sort(rules, by="lift"),6))
+
+```
+
+No coinciden del todo, pero con excepciones.
+
+Por ejemplo en el caso de mayor soporte, tenemos reglas sin lhs, donde lift=1, por lo que no hay correlación. La confianza es del 100%.
+
+En el caso de mayor confianza (1 en todos los casos), el lift tiene 2 reglas con valor alto en esta variable, que ya hemos mencionado (82,22%, alta probabilidad), el soporte está entre el 10-13% en este caso.
+
+Para mayor elevación, en este caso hay un poco más de coincidencia con confianza. El soporte es similar a confianza, está entre 10-12%. La confianza es alta también, entre 0.98 y 1.
+
+
+******
+## Pregunta 8
+******
+El objetivo de todo estudio analítico es la extracción de conocimiento o inteligencia, **insight** en inglés.  
+Explicad en este apartado qué conocimiento se puede extraer de nuestro juego de datos a partir de las reglas generadas. Puede utilizar algunos ejemplos concretos de las reglas obtenidas a lo largo de la práctica.
+
+### Respuesta 8
+
+> Sí que se puede extraer información, pero deberíamos excluir las reglas que realmente no aportan información o solo aportan información redundante, como la que se mencionaba sobre los años de Educación->Doctorado.
+
+>Esto se ha realizado en el ejemplo con rules2:
+
+```{r,eval=TRUE,echo=TRUE}
+
+AdultC2<-AdultC[,-5]
+Adult2 = as(AdultC2, "transactions")
+
+
+#Podemos extraer información por ejemplo, de la relación entre país de orígen USA y raza blanca con horas de trabajo por semana, o ingresos, entre otros datos de interés:
+
+inspect(head(sort(rules2, by="coverage"),10))
+
+```
